@@ -1,0 +1,17 @@
+{
+  "name": "owo-myo-forwarder",
+  "version": "0.0.1",
+  "description": "App for forwarding Myo websocket events to external clients",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": {
+    "name": "Matt Felsen",
+    "email": "mattfelsen@localprojects.com"
+  },
+  "license": "ISC",
+  "dependencies": {
+    "ws": "^0.4.32"
+  }
+}
