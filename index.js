@@ -2,7 +2,7 @@ var WebSocket = require('ws');
 var WebSocketServer = require('ws').Server;
 
 // connect to Myo Connect
-var myo = new WebSocket('ws://localhost:10138/myo/1');
+var myo = new WebSocket('ws://localhost:10138/myo/2');
 
 // set up a server for clients to connect to
 var wss = new WebSocketServer({ port: 9000 });
@@ -45,17 +45,23 @@ myo.on('message', function(data) {
     	myos[msg.myo].connected = json;
     }
 
-    if (event == 'arm_recognized') {
+    if (event == 'arm_synced') {
     	if (!myos.hasOwnProperty(msg.myo))
     		myos[msg.myo] = {};
 
-    	myos[msg.myo].arm_recognized = json;
+    	myos[msg.myo].arm_synced = json;
+    }
+
+    if (event == 'arm_unsynced') {
+        if (!myos.hasOwnProperty(msg.myo))
+            delete myos[msg.myo].arm_synced;
+
     }
 
     if (event == 'disconnected') {
 		if (myos.hasOwnProperty(msg.myo)) {
 	    	delete myos[msg.myo].connected;
-	    	delete myos[msg.myo].arm_recognized;
+	    	delete myos[msg.myo].arm_synced;
 		}
     }
 
@@ -78,8 +84,8 @@ wss.on('connection', function(ws) {
 		if (myos[key].hasOwnProperty('connected'))
 			ws.send(JSON.stringify(myos[key].connected))
 
-		if (myos[key].hasOwnProperty('arm_recognized'))
-			ws.send(JSON.stringify(myos[key].arm_recognized))
+		if (myos[key].hasOwnProperty('arm_synced'))
+			ws.send(JSON.stringify(myos[key].arm_synced))
 	}
 
     ws.on('message', function(data) {
