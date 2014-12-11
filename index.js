@@ -2,7 +2,7 @@ var WebSocket = require('ws');
 var WebSocketServer = require('ws').Server;
 
 // connect to Myo Connect
-var hub = new WebSocket('ws://localhost:10138/myo/2');
+var hub = new WebSocket('ws://localhost:10138/myo/3');
 
 // set up a server for clients to connect to
 var wss = new WebSocketServer({ port: 9000 });
@@ -30,8 +30,8 @@ hub.on('message', function(data) {
     // keep track of relating to armband status
 
     var json = JSON.parse(data);
-    if (json[0] != 'event') return;
 
+    var type = json[0];
     var msg = json[1];
     var event = msg.type;
     var myoID = msg.myo;
@@ -52,13 +52,22 @@ hub.on('message', function(data) {
     	myos[msg.myo].arm_synced = json;
     }
 
+    if (event == 'arm_recognized') {
+        myos[msg.myo].arm_recognized = json;
+    }
+
     // events for which we should delete some data
+
+    if (event == 'arm_lost') {
+        delete myos[myoID].arm_recognized;
+    }
 
     if (event == 'arm_unsynced') {
         delete myos[myoID].arm_synced;
     }
 
     if (event == 'disconnected') {
+        delete myos[myoID].arm_recognized;
         delete myos[myoID].arm_synced;
     	delete myos[myoID].connected;
     }
@@ -67,7 +76,7 @@ hub.on('message', function(data) {
 		delete myos[myoID];
     }
 
-    if (event != 'orientation' && event != 'pose')
+    if (event != 'orientation' || type != 'event')
     	console.log(JSON.stringify(json));
 
 });
@@ -83,6 +92,9 @@ wss.on('connection', function(ws) {
 
 		if (myos[myoID].hasOwnProperty('arm_synced'))
 			ws.send(JSON.stringify(myos[myoID].arm_synced))
+
+        if (myos[myoID].hasOwnProperty('arm_recognized'))
+            ws.send(JSON.stringify(myos[myoID].arm_recognized))
 	}
 
     ws.on('message', function(data) {
