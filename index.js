@@ -23,7 +23,7 @@ var initMyo = function(myoID) {
 }
 
 hub.on('message', function(data) {
-	// forward everything along to all connected clients
+    // forward everything along to all connected clients
     wss.broadcast(data);
 
     // now let's do some checking for events we need to
@@ -41,15 +41,15 @@ hub.on('message', function(data) {
     // events for which we should store some data
 
     if (event == 'paired') {
-    	myos[msg.myo].paired = json;
+        myos[msg.myo].paired = json;
     }
     
     if (event == 'connected') {
-    	myos[msg.myo].connected = json;
+        myos[msg.myo].connected = json;
     }
     
     if (event == 'arm_synced') {
-    	myos[msg.myo].arm_synced = json;
+        myos[msg.myo].arm_synced = json;
     }
 
     if (event == 'arm_recognized') {
@@ -69,33 +69,33 @@ hub.on('message', function(data) {
     if (event == 'disconnected') {
         delete myos[myoID].arm_recognized;
         delete myos[myoID].arm_synced;
-    	delete myos[myoID].connected;
+        delete myos[myoID].connected;
     }
 
     if (event == 'unpaired') {
-		delete myos[myoID];
+        delete myos[myoID];
     }
 
     if (event != 'orientation' || type != 'event')
-    	console.log(JSON.stringify(json));
+        console.log(JSON.stringify(json));
 
 });
 
 wss.on('connection', function(ws) {
 
-	for (var myoID in myos) {
-		if (myos[myoID].hasOwnProperty('paired'))
-			ws.send(JSON.stringify(myos[myoID].paired))
+    for (var myoID in myos) {
+        if (myos[myoID].hasOwnProperty('paired'))
+            ws.send(JSON.stringify(myos[myoID].paired))
 
-		if (myos[myoID].hasOwnProperty('connected'))
-			ws.send(JSON.stringify(myos[myoID].connected))
+        if (myos[myoID].hasOwnProperty('connected'))
+            ws.send(JSON.stringify(myos[myoID].connected))
 
-		if (myos[myoID].hasOwnProperty('arm_synced'))
-			ws.send(JSON.stringify(myos[myoID].arm_synced))
+        if (myos[myoID].hasOwnProperty('arm_synced'))
+            ws.send(JSON.stringify(myos[myoID].arm_synced))
 
         if (myos[myoID].hasOwnProperty('arm_recognized'))
             ws.send(JSON.stringify(myos[myoID].arm_recognized))
-	}
+    }
 
     ws.on('message', function(data) {
         hub.send(data, function(){});
