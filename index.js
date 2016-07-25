@@ -76,8 +76,12 @@ hub.on('message', function(data) {
         delete myos[myoID];
     }
 
-    if (event != 'orientation' || type != 'event')
+    if (type == 'event') {
+        if (event != 'orientation' && event != 'emg')
+            console.log(JSON.stringify(json));
+    } else {
         console.log(JSON.stringify(json));
+    }
 
 });
 
