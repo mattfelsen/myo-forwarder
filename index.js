@@ -2,7 +2,10 @@ var WebSocket = require('ws');
 var WebSocketServer = require('ws').Server;
 
 // connect to Myo Connect
-var hub = new WebSocket('ws://localhost:10138/myo/3');
+var hub;
+var connected = false;
+var reconnectTimer = setInterval(checkReconnect, 500);
+createWebSocket();
 
 // set up a server for clients to connect to
 var wss = new WebSocketServer({ port: 9000 });
@@ -22,68 +25,98 @@ var initMyo = function(myoID) {
         myos[myoID] = {};
 }
 
-hub.on('message', function(data) {
-    // forward everything along to all connected clients
-    wss.broadcast(data);
+function checkReconnect() {
+    if (connected) return;
 
-    // now let's do some checking for events we need to
-    // keep track of relating to armband status
-
-    var json = JSON.parse(data);
-
-    var type = json[0];
-    var msg = json[1];
-    var event = msg.type;
-    var myoID = msg.myo;
-
-    initMyo(myoID);
-
-    // events for which we should store some data
-
-    if (event == 'paired') {
-        myos[msg.myo].paired = json;
+    console.log('Trying new connection...');
+    try {
+        createWebSocket();
+    } catch (e) {
+        console.log('WebSocket checkReconnect error', e);
     }
-    
-    if (event == 'connected') {
-        myos[msg.myo].connected = json;
-    }
-    
-    if (event == 'arm_synced') {
-        myos[msg.myo].arm_synced = json;
-    }
+}
 
-    if (event == 'arm_recognized') {
-        myos[msg.myo].arm_recognized = json;
-    }
+function createWebSocket() {
+    hub = new WebSocket('ws://localhost:10138/myo/3');
 
-    // events for which we should delete some data
+    hub.on('open', function() {
+        connected = true;
+        console.log('WebSocket connection opened', hub.url);
+    });
 
-    if (event == 'arm_lost') {
-        delete myos[myoID].arm_recognized;
-    }
+    hub.on('close', function() {
+        connected = false;
+        console.log('WebSocket connection closed');
+    });
 
-    if (event == 'arm_unsynced') {
-        delete myos[myoID].arm_synced;
-    }
+    hub.on('error', function(e) {
+        connected = false;
+        console.log('WebSocket connection error', e.code);
+    });
 
-    if (event == 'disconnected') {
-        delete myos[myoID].arm_recognized;
-        delete myos[myoID].arm_synced;
-        delete myos[myoID].connected;
-    }
+    hub.on('message', function(data) {
+        // forward everything along to all connected clients
+        wss.broadcast(data);
 
-    if (event == 'unpaired') {
-        delete myos[myoID];
-    }
+        // now let's do some checking for events we need to
+        // keep track of relating to armband status
 
-    if (type == 'event') {
-        if (event != 'orientation' && event != 'emg')
+        var json = JSON.parse(data);
+
+        var type = json[0];
+        var msg = json[1];
+        var event = msg.type;
+        var myoID = msg.myo;
+
+        initMyo(myoID);
+
+        // events for which we should store some data
+
+        if (event == 'paired') {
+            myos[msg.myo].paired = json;
+        }
+        
+        if (event == 'connected') {
+            myos[msg.myo].connected = json;
+        }
+        
+        if (event == 'arm_synced') {
+            myos[msg.myo].arm_synced = json;
+        }
+
+        if (event == 'arm_recognized') {
+            myos[msg.myo].arm_recognized = json;
+        }
+
+        // events for which we should delete some data
+
+        if (event == 'arm_lost') {
+            delete myos[myoID].arm_recognized;
+        }
+
+        if (event == 'arm_unsynced') {
+            delete myos[myoID].arm_synced;
+        }
+
+        if (event == 'disconnected') {
+            delete myos[myoID].arm_recognized;
+            delete myos[myoID].arm_synced;
+            delete myos[myoID].connected;
+        }
+
+        if (event == 'unpaired') {
+            delete myos[myoID];
+        }
+
+        if (type == 'event') {
+            if (event != 'orientation' && event != 'emg')
+                console.log(JSON.stringify(json));
+        } else {
             console.log(JSON.stringify(json));
-    } else {
-        console.log(JSON.stringify(json));
-    }
+        }
 
-});
+    });
+}
 
 wss.on('connection', function(ws) {
 
@@ -104,5 +137,5 @@ wss.on('connection', function(ws) {
     ws.on('message', function(data) {
         hub.send(data, function(){});
     });
-});
 
+});
