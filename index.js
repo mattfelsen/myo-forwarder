@@ -13,6 +13,9 @@ var wss = new WebSocketServer({ port: 9000 });
 // keep track of armbands
 var myos = {};
 
+// broadcast out EMG data at 60Hz instead of 200Hz
+var emgTimer = setInterval(sendEMG, 1000 / 60);
+
 // helper for broadcasting
 wss.broadcast = function(data) {
     for (var i in this.clients) this.clients[i].send(data, function(){});
@@ -55,10 +58,7 @@ function createWebSocket() {
     });
 
     hub.on('message', function(data) {
-        // forward everything along to all connected clients
-        wss.broadcast(data);
-
-        // now let's do some checking for events we need to
+        // let's do some checking for events we need to
         // keep track of relating to armband status
 
         var json = JSON.parse(data);
@@ -69,6 +69,12 @@ function createWebSocket() {
         var myoID = msg.myo;
 
         initMyo(myoID);
+
+        // forward everything along to all connected clients
+        // skip EMG though, which is broadcast in a separate loop
+        // to cap it at 60Hz
+        if (event != 'emg')
+            wss.broadcast(data);
 
         // events for which we should store some data
 
@@ -88,6 +94,10 @@ function createWebSocket() {
             myos[msg.myo].arm_recognized = json;
         }
 
+        if (event == 'emg') {
+            myos[msg.myo].emg = json;
+        }
+
         // events for which we should delete some data
 
         if (event == 'arm_lost') {
@@ -99,6 +109,7 @@ function createWebSocket() {
         }
 
         if (event == 'disconnected') {
+            delete myos[myoID].emg;
             delete myos[myoID].arm_recognized;
             delete myos[myoID].arm_synced;
             delete myos[myoID].connected;
@@ -110,12 +121,19 @@ function createWebSocket() {
 
         if (type == 'event') {
             if (event != 'orientation' && event != 'emg')
-                console.log(JSON.stringify(json));
+                console.log(data);
         } else {
-            console.log(JSON.stringify(json));
+            console.log(data);
         }
 
     });
+}
+
+function sendEMG() {
+    for (var myoID in myos) {
+        if (myos[myoID].hasOwnProperty('emg'))
+            wss.broadcast(JSON.stringify(myos[myoID].emg));
+    }
 }
 
 wss.on('connection', function(ws) {
